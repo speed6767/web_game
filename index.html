@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>15 秒點擊王 MAX</title>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: Arial;
+  user-select: none;
+  overflow: hidden;
+
+  background: linear-gradient(120deg, #74ebd5, #9face6, #fbc2eb);
+  background-size: 300% 300%;
+  animation: bgMove 10s ease infinite;
+}
+
+@keyframes bgMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+#top {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  color: white;
+  text-shadow: 0 0 6px rgba(0,0,0,.5);
+  z-index: 10;
+}
+
+#center, #result {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  z-index: 10;
+}
+
+button {
+  font-size: 20px;
+  padding: 10px 25px;
+  margin: 8px;
+  border: none;
+  border-radius: 8px;
+}
+
+.effect {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.7);
+  transform: scale(0);
+  animation: clickFX .5s ease-out;
+  pointer-events: none;
+}
+
+@keyframes clickFX {
+  to { transform: scale(3); opacity: 0; }
+}
+
+#result {
+  display: none;
+  background: rgba(0,0,0,.6);
+  padding: 30px;
+  border-radius: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="top">
+  <div>玩家：<span id="player">A</span></div>
+  <div>剩餘時間：<span id="time">15.0</span> 秒</div>
+  <div>點擊次數：<span id="score">0</span></div>
+  <div>最高紀錄：<span id="best">0</span></div>
+</div>
+
+<div id="center">
+  <h1>🖱️ 15 秒點擊王 MAX</h1>
+  <button onclick="startGame()">開始 PK</button>
+  <button onclick="goFull()">全螢幕</button>
+</div>
+
+<div id="result">
+  <h2>🏁 PK 結果</h2>
+  <p>A：<span id="scoreA"></span></p>
+  <p>B：<span id="scoreB"></span></p>
+  <h3 id="winner"></h3>
+  <button onclick="location.reload()">再玩一次</button>
+</div>
+
+<script>
+let duration = 15000;
+let score = 0;
+let startTime = 0;
+let playing = false;
+let timer;
+
+let player = "A";
+let scoreA = 0;
+let scoreB = 0;
+
+let best = localStorage.getItem("bestMAX") || 0;
+document.getElementById("best").innerText = best;
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function sound() {
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.frequency.value = 600;
+  g.gain.value = 0.05;
+  o.connect(g);
+  g.connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime + 0.05);
+}
+
+function goFull() {
+  document.documentElement.requestFullscreen();
+}
+
+function startGame() {
+  score = 0;
+  startTime = Date.now();
+  playing = true;
+
+  document.getElementById("score").innerText = 0;
+  document.getElementById("time").innerText = "15.0";
+  document.getElementById("center").style.display = "none";
+  document.getElementById("player").innerText = player;
+
+  timer = setInterval(update, 50);
+}
+
+function update() {
+  let remain = duration - (Date.now() - startTime);
+
+  if (remain <= 0) {
+    endTurn();
+    return;
+  }
+
+  document.getElementById("time").innerText = (remain / 1000).toFixed(1);
+
+  let r = Math.min(score / 80, 1);
+  document.body.style.background =
+    `linear-gradient(120deg,
+      rgb(${255*r},80,80),
+      rgb(120,100,255),
+      rgb(255,180,200))`;
+}
+
+function endTurn() {
+  clearInterval(timer);
+  playing = false;
+
+  if (player === "A") {
+    scoreA = score;
+    player = "B";
+    setTimeout(startGame, 1000);
+  } else {
+    scoreB = score;
+    endGame();
+  }
+}
+
+function endGame() {
+  if (scoreA > best) {
+    best = scoreA;
+    localStorage.setItem("bestMAX", best);
+  }
+
+  document.getElementById("scoreA").innerText = scoreA;
+  document.getElementById("scoreB").innerText = scoreB;
+
+  document.getElementById("winner").innerText =
+    scoreA > scoreB ? "🎉 玩家 A 勝利！" :
+    scoreB > scoreA ? "🎉 玩家 B 勝利！" :
+    "🤝 平手！";
+
+  document.getElementById("result").style.display = "block";
+}
+
+function tap(e) {
+  if (!playing) return;
+
+  score++;
+  document.getElementById("score").innerText = score;
+  sound();
+
+  const fx = document.createElement("div");
+  fx.className = "effect";
+  fx.style.left = (e.clientX || e.touches[0].clientX) - 20 + "px";
+  fx.style.top = (e.clientY || e.touches[0].clientY) - 20 + "px";
+  document.body.appendChild(fx);
+  setTimeout(() => fx.remove(), 500);
+}
+
+document.addEventListener("click", tap);
+document.addEventListener("touchstart", tap);
+</script>
+
+</body>
+</html>
